@@ -64,45 +64,52 @@ WHERE row_num > 1 ;
 
 ### Total des licenciements par année
 ```sql
-SELECT year, SUM(layoffs) AS total_layoffs 
-FROM layoffs_data 
-GROUP BY year 
-ORDER BY year ASC;
+WITH Rolling_Total AS
+(
+SELECT SUBSTRING(`date`,1,7) AS `MONTH`, SUM(total_laid_off) AS total_off
+FROM layoffs_staging2
+WHERE SUBSTRING(`date`,1,7) IS NOT NULL
+GROUP BY `MONTH`
+ORDER BY 1 ASC
+)
+SELECT `MONTH`, total_off,
+SUM(total_off) OVER(ORDER BY `MONTH`) AS rolling_year
+FROM Rolling_Total;
 ```
 
 ### Top 5 des entreprises avec le plus de licenciements
 ```sql
-SELECT company, SUM(layoffs) AS total_layoffs 
-FROM layoffs_data 
-GROUP BY company 
-ORDER BY total_layoffs DESC 
-LIMIT 5;
+WITH Company_Year (company, years, total_laid_off) AS
+(
+SELECT company, YEAR(`date`), SUM(total_laid_off)
+FROM layoffs_staging2
+GROUP BY company, YEAR(`date`)
+), Company_Year_Rank AS
+(SELECT *,
+DENSE_RANK() OVER (PARTITION BY years ORDER BY total_laid_off DESC) AS ranking
+FROM Company_Year
+WHERE years IS NOT NULL
+)
+SELECT *
+FROM Company_Year_Rank
+WHERE ranking <=5;
 ```
 
 ### Répartition des licenciements par secteur d'industrie
 ```sql
-SELECT industry, SUM(layoffs) AS total_layoffs 
-FROM layoffs_data 
-GROUP BY industry 
-ORDER BY total_layoffs DESC;
+SELECT industry, SUM(total_laid_off)
+FROM layoffs_staging2
+GROUP BY industry
+ORDER BY 2 DESC;
 ```
-
-### Identification des doublons
-```sql
-SELECT *, COUNT(*) 
-FROM layoffs_data 
-GROUP BY company, year, industry, layoffs 
-HAVING COUNT(*) > 1;
-```
-
 
 ## Technologies utilisées
 - **SQL** : Manipulation et analyse des données.
-- **MySQL** : Système de gestion de bases de données utilisé pour stocker et interroger les données.
+- **MySQL Workbench** : Système de gestion de bases de données utilisé pour stocker et interroger les données.
 
 ## Contributions
 Les contributions sont les bienvenues ! N'hésitez pas à proposer des améliorations ou à ajouter des analyses supplémentaires via des pull requests.
 
 ## Contact
-Si vous avez des questions ou souhaitez en savoir plus, vous pouvez me contacter sur [LinkedIn](https://www.linkedin.com) ou ouvrir une issue sur ce dépôt.
+Si vous avez des questions ou souhaitez en savoir plus, vous pouvez me contacter sur [LinkedIn](www.linkedin.com/in/marc-gaël-zeme) ou ouvrir une issue sur ce dépôt.
 
